@@ -256,6 +256,22 @@ button.primary:not(.small) { width: 100%; padding: 15px; font-size: 17px; }
       </form>
     </section>
 
+    <section data-tab="bizlog" hidden>
+      <h2 id="bizLogName" style="margin:2px 4px 12px;font-size:22px;overflow-wrap:anywhere"></h2>
+      <div class="seg small" style="margin-bottom:8px" role="radiogroup" aria-label="Show">
+        <label><input type="radio" name="bf" value="all" checked>All</label><label><input type="radio" name="bf" value="in">Income</label>
+        <label><input type="radio" name="bf" value="out">Expenses</label><label><input type="radio" name="bf" value="inv">Invest</label>
+      </div>
+      <div class="seg small" style="margin-bottom:12px" role="radiogroup" aria-label="Period">
+        <label><input type="radio" name="br" value="month" checked>Month</label><label><input type="radio" name="br" value="year">Year</label>
+        <label><input type="radio" name="br" value="all">All time</label>
+      </div>
+      <p class="hint" id="bizLogHint"></p>
+      <div id="bizLogSum"></div>
+      <button id="bizLogCsv" type="button" class="wide" style="margin-bottom:4px">Export these as CSV</button>
+      <div id="bizLog"></div>
+    </section>
+
     <section data-tab="history" hidden>
       <input type="search" id="q" placeholder="Search notes, categories, accounts, amounts…" aria-label="Search entries" style="margin-bottom:8px">
       <p class="hint" id="histHint"></p>
@@ -418,7 +434,7 @@ const HINTS = {
   in: 'Money you received: salary, sales, Google Ads.',
   move: 'Money moving between your own accounts: putting cash aside, funding a business, exchanging MMK ↔ THB, or lending to someone.',
 };
-const TITLES = { home: 'Overview', history: 'History', add: 'Add entry', savings: 'Savings', business: 'Business', bills: 'Bills', settings: 'Settings' };
+const TITLES = { home: 'Overview', history: 'History', add: 'Add entry', savings: 'Savings', business: 'Business', bizlog: 'Business', bills: 'Bills', settings: 'Settings' };
 const DONE = { out: 'Paid', in: 'Received', move: 'Done' };
 let cfg = JSON.parse(localStorage.cfg || 'null'), key, salt, state, remote, savedKey, branch, editing = null, period = 'month';
 
@@ -632,7 +648,7 @@ const curOf = id => state.accounts.find(a => a.id === id)?.cur ?? '';
 const homeAcc = cur => (state.accounts.find(a => house(a) && !a.closed && a.cur === cur) ?? state.accounts.find(a => house(a) && !a.closed))?.id;
 const visible = (a, bal) => !a.closed || Math.abs(bal[a.id]) >= 0.01;
 
-function render() { renderAdd(); renderHome(); renderHistory(); renderSavings(); renderBusiness(); renderBills(); renderSettings(); }
+function render() { renderAdd(); renderHome(); renderHistory(); renderSavings(); renderBusiness(); renderBizLog(); renderBills(); renderSettings(); }
 
 // Savings: totals per currency, each pot with its target and what went in / out / was spent in the period.
 function renderSavings() {
@@ -706,7 +722,7 @@ function renderHome() {
 
   // Period summary: household (non-business, non-loan) per currency
   $('#sumTitle').textContent = periodLabel();
-  const pre = prefix(), per = {}, P = c => per[c] ??= { spend: {}, earn: {}, months: {}, A: 0, B: 0 };
+  const pre = prefix(), per = {}, P = c => per[c] ??= { spend: {}, earn: {}, months: {}, inv: {}, A: 0, B: 0 };
   for (const t of txns) {
     if (!t.date.startsWith(pre)) continue;
     const src = A[t.from], dst = A[t.to];
@@ -717,7 +733,18 @@ function renderHome() {
       if (t.for === 'S') { p.A += t.amt * sh / 100; p.B += t.amt * (100 - sh) / 100; } else p[t.for] += t.amt;
     }
     if (t.type === 'in' && dst && house(dst)) { const p = P(dst.cur); p.earn[t.cat] = (p.earn[t.cat] || 0) + t.amt; }
+    // Invested in a business from an everyday account, keyed by whose account it came from.
+    if (t.type === 'move' && src && house(src) && dst?.biz) { const p = P(src.cur), k = `${src.owner}|${dst.id}`; p.inv[k] = (p.inv[k] || 0) + t.amt; }
   }
+  const invHtml = (inv, c) => {
+    const rows = Object.entries(inv).sort((a, b) => b[1] - a[1]), byWho = {};
+    if (!rows.length) return '';
+    for (const [k, v] of rows) byWho[k.split('|')[0]] = (byWho[k.split('|')[0]] || 0) + v;
+    return `<h4>Invested in businesses</h4>
+      <p class="hint">${Object.entries(byWho).map(([o, v]) => `${esc(who(o))} <b>${fmt(v)}</b>`).join(' · ')} ${esc(c)}</p>
+      ${rows.map(([k, v]) => { const [o, id] = k.split('|'); return `<div class="line" style="padding:6px 0">
+        <span>${esc(who(o))}<small class="sub" style="display:inline"> → ${esc(nameOf(id))}</small></span>${money(v, c)}</div>`; }).join('')}`;
+  };
   $('#summary').innerHTML = curs.filter(c => per[c]).map(c => {
     const p = per[c], sp = sum(p.spend), er = sum(p.earn);
     const months = period === 'year' ? Object.fromEntries(Object.keys(p.months).sort().map(mm =>
@@ -727,7 +754,8 @@ function renderHome() {
       ${sp ? `<p class="hint">Each person's share: ${esc(people[0])} ${fmt(p.A)} · ${esc(people[1])} ${fmt(p.B)}</p>` : ''}
       ${months && Object.keys(months).length > 1 ? `<h4>Spending month by month</h4>${bars(months, c, 'bad', false)}` : ''}
       ${sp || Object.keys(state.budgets).some(k => k.startsWith(c + '|')) ? `<h4>Spending by category</h4>${spendBars(p.spend, c)}` : ''}
-      ${er ? `<h4>Income by category</h4>${bars(p.earn, c, 'good')}` : ''}</div>`;
+      ${er ? `<h4>Income by category</h4>${bars(p.earn, c, 'good')}` : ''}
+      ${invHtml(p.inv, c)}</div>`;
   }).join('') || `<div class="card empty">Nothing recorded in ${esc(periodLabel())} yet.<br>Tap <b>+</b> to add an entry.</div>`;
 
   const persons = accounts.filter(a => a.loan && visible(a, bal));
@@ -766,14 +794,17 @@ function renderBusiness() {
       ${by ? `<p class="hint" style="margin-top:10px">Invested from: ${by}</p>` : ''}
       ${s.mOut ? `<h4>Expenses · ${label}</h4>${bars(s.cats, c, 'bad')}` : ''}
       <div class="row qa"><button data-q="in:${esc(a.id)}">+ Income</button><button data-q="out:${esc(a.id)}">+ Expense</button><button data-q="invest:${esc(a.id)}">Invest</button></div>
-      <button data-q="csv:${esc(a.id)}" class="wide" style="margin-top:8px;background:none;border:1px solid var(--line)">Export ${esc(a.name)} as CSV</button></div>`;
+      <div class="row" style="margin-top:8px"><button data-q="log:${esc(a.id)}">History</button>
+        <button data-q="csv:${esc(a.id)}" style="background:none;border:1px solid var(--line)">Export CSV</button></div></div>`;
   }).join('') || '<div class="card empty">No businesses yet. Add one below.</div>';
 }
 
 // With a search query: every word must match somewhere in the entry, across all months. Otherwise: the picked month.
+// Business-only entries (sales, staff salary…) live on that business's own history page, not here.
+const bizOnly = t => [t.from, t.to].filter(Boolean).every(id => state.accounts.find(a => a.id === id)?.biz);
 function historyList() {
   const words = $('#q').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if (!words.length) return { q: false, list: state.txns.filter(t => t.date.startsWith($('#month').value)) };
+  if (!words.length) return { q: false, list: state.txns.filter(t => t.date.startsWith($('#month').value) && !bizOnly(t)) };
   const TYPE = { out: 'expense', in: 'income', move: 'transfer exchange' };
   return { q: true, list: state.txns.filter(t => {
     const hay = [t.date, TYPE[t.type], t.cat, t.note, nameOf(t.from), nameOf(t.to), t.from2 && nameOf(t.from2), curOf(t.from ?? t.to), t.amt, t.amt2, t.type === 'out' ? who(t.for) : ''].join(' ').toLowerCase();
@@ -782,10 +813,16 @@ function historyList() {
 }
 
 function renderHistory() {
-  const { q, list } = historyList(), mt = list.sort((a, b) => b.date.localeCompare(a.date));
-  $('#histHint').textContent = (q ? `${mt.length} result${mt.length === 1 ? '' : 's'} across all months. ` : 'Everything recorded in the month picked above. ')
-    + 'Tap an entry to edit it, ✕ to delete.';
+  const { q, list } = historyList();
+  $('#histHint').textContent = (q ? `${list.length} result${list.length === 1 ? '' : 's'} across all months. `
+    : 'Household entries in the month picked above. Business income and expenses are on each business\'s History. ') + 'Tap an entry to edit it, ✕ to delete.';
   $('#csvMonth').textContent = q ? 'Export these results as CSV' : 'Export this month as CSV';
+  $('#list').innerHTML = listHtml(list, q ? 'Nothing matches that search.' : 'No entries this month.');
+}
+
+// Entries grouped by day, newest first. Tap = edit, ✕ = delete (see listClick).
+function listHtml(txns, empty) {
+  const mt = [...txns].sort((a, b) => b.date.localeCompare(a.date));
   let html = '', last;
   for (const t of mt) {
     if (t.date !== last) { html += `${last ? '</div>' : ''}<h4 class="day">${esc(dayLabel(t.date))}</h4><div class="card rows">`; last = t.date; }
@@ -798,7 +835,46 @@ function renderHistory() {
       <span class="grow"><b>${esc(t.cat)}</b>${t.note ? ' · ' + esc(t.note) : ''}<small class="sub">${esc(where)}</small></span>
       <span class="right">${amt}</span><button class="x" data-del="${esc(t.id)}" aria-label="Delete entry">✕</button></div>`;
   }
-  $('#list').innerHTML = html ? html + '</div>' : `<div class="card empty">${q ? 'Nothing matches that search.' : 'No entries this month.'}</div>`;
+  return html ? html + '</div>' : `<div class="card empty">${empty}</div>`;
+}
+
+// One business's own history: filter by kind (all / income / expenses / invest) and range (month / year / all time).
+let bizView = null;
+function bizEntries() {
+  const kind = $('[name=bf]:checked').value, range = $('[name=br]:checked').value;
+  const pre = range === 'all' ? '' : range === 'year' ? $('#month').value.slice(0, 4) : $('#month').value;
+  return state.txns.filter(t => (t.from === bizView || t.to === bizView) && t.date.startsWith(pre)
+    && (kind === 'all' || t.type === { in: 'in', out: 'out', inv: 'move' }[kind]));
+}
+function renderBizLog() {
+  const a = state?.accounts.find(x => x.id === bizView);
+  if (!a) return;
+  const list = bizEntries(), c = a.cur, range = $('[name=br]:checked').value, s = { in: 0, out: 0, inv: 0, back: 0 };
+  for (const t of list) {
+    if (t.type === 'in') s.in += t.amt;
+    if (t.type === 'out') s.out += t.amt;
+    if (t.type === 'move' && t.to === bizView) s.inv += t.amt2 ?? t.amt;
+    if (t.type === 'move' && t.from === bizView) s.back += t.amt;
+  }
+  const label = range === 'all' ? 'All time' : range === 'year' ? $('#month').value.slice(0, 4) : new Date($('#month').value + '-01T00:00').toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  $('#bizLogHint').textContent = `${label} · ${list.length} entr${list.length === 1 ? 'y' : 'ies'}. Tap an entry to edit it, ✕ to delete.`;
+  $('#bizLogName').innerHTML = `${esc(a.name)} <span class="badge" style="vertical-align:middle">${esc(c)}</span> <small class="sub" style="display:inline">history</small>`;
+  const kind = $('[name=bf]:checked').value, p = s.in - s.out;
+  $('#bizLogSum').innerHTML = `<div class="card">${{
+    all: `<div class="stats" style="margin-top:0"><div><small>Profit</small>${money(p, c, 'big ' + (p < 0 ? 'bad' : 'good'))}</div></div>
+      <div class="grid4"><div><small>Income</small>${money(s.in, c, 'good')}</div><div><small>Expenses</small>${money(s.out, c, 'bad')}</div>
+      <div><small>Invested</small>${money(s.inv, c)}</div><div><small>Paid back to you</small>${money(s.back, c)}</div></div>`,
+    in: `<small class="sub">Total income</small>${money(s.in, c, 'big good')}`,
+    out: `<small class="sub">Total expenses</small>${money(s.out, c, 'big bad')}`,
+    inv: `<div class="stats" style="margin:0"><div><small>Invested</small>${money(s.inv, c, 'big')}</div><div><small>Paid back to you</small>${money(s.back, c, 'big')}</div></div>`,
+  }[kind]}</div>`;
+  $('#bizLog').innerHTML = listHtml(list, 'No entries for this filter.');
+}
+function listClick(e) {
+  const del = e.target.closest('[data-del]')?.dataset.del;
+  if (del) { if (confirm('Delete this entry?')) save(s => { s.txns = s.txns.filter(t => t.id !== del); }, 'Deleted'); return; }
+  const id = e.target.closest('[data-edit]')?.dataset.edit;
+  if (id) startEdit(state.txns.find(t => t.id === id));
 }
 
 function renderBills() {
@@ -944,7 +1020,7 @@ function go(tab, push = true) {
   for (const s of $$('[data-tab]')) s.hidden = s.dataset.tab !== tab;
   for (const b of $$('[data-go]')) b.toggleAttribute('aria-current', b.dataset.go === tab);
   $('#title').textContent = TITLES[tab];
-  $('#month').hidden = !['home', 'history', 'savings', 'business'].includes(tab);
+  $('#month').hidden = !['home', 'history', 'savings', 'business', 'bizlog'].includes(tab);
   scrollTo(0, 0);
 }
 
@@ -1004,7 +1080,7 @@ $('#csvMonth').onclick = () => {
   exportCsv(list, q ? `our-finance-search-${today()}.csv` : `our-finance-${$('#month').value}.csv`);
 };
 $('#csvGo').onclick = () => exportScope($('#csvScope').value, $('#csvPick').value);
-$('#month').onchange = () => { renderHome(); renderHistory(); renderSavings(); renderBusiness(); };
+$('#month').onchange = () => { renderHome(); renderHistory(); renderSavings(); renderBusiness(); renderBizLog(); };
 for (const el of $$('[name=periodH],[name=periodB]')) el.onchange = () => {
   period = el.value;
   for (const r of $$(`[name=periodH][value=${period}],[name=periodB][value=${period}]`)) r.checked = true;
@@ -1028,6 +1104,7 @@ const quick = e => {
   if (!id) return;
   const a = state.accounts.find(x => x.id === id);
   if (q === 'csv') return exportScope(`acc:${id}`, '');
+  if (q === 'log') { bizView = id; renderBizLog(); return go('bizlog'); }
   if (q === 'in') return prefill('in', null, id);
   if (q === 'out') return prefill('out', id);
   if (q === 'invest') return prefill('move', homeAcc(a.cur), id, 'Investment');
@@ -1088,11 +1165,13 @@ $('#add').onsubmit = async e => {
   el.amt.value = el.amt2.value = el.note.value = el.cat.value = ''; el.every.value = '0'; renderChips();
 };
 
-$('#list').onclick = e => {
-  const del = e.target.closest('[data-del]')?.dataset.del;
-  if (del) { if (confirm('Delete this entry?')) save(s => { s.txns = s.txns.filter(t => t.id !== del); }, 'Deleted'); return; }
-  const id = e.target.closest('[data-edit]')?.dataset.edit;
-  if (id) startEdit(state.txns.find(t => t.id === id));
+$('#list').onclick = listClick;
+$('#bizLog').onclick = listClick;
+for (const el of $$('[name=bf],[name=br]')) el.onchange = renderBizLog;
+$('#bizLogCsv').onclick = () => {
+  const list = bizEntries();
+  if (!list.length) return alert('Nothing to export.');
+  exportCsv(list, `our-finance-${nameOf(bizView)}-${$('[name=bf]:checked').value}-${$('[name=br]:checked').value === 'all' ? 'all-time' : $('#month').value}.csv`.replace(/[\\/:*?"<>|\s]+/g, '-'), bizView);
 };
 
 $('#due').onclick = e => {
