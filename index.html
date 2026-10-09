@@ -43,7 +43,7 @@ h4 { margin: 16px 0 4px; font-size: 13px; color: var(--muted); font-weight: 600;
 .tabs { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; display: flex; justify-content: space-around; align-items: center;
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: rgba(7, 12, 30, .82); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid rgba(34, 211, 238, .18); box-shadow: 0 -8px 30px rgba(34, 211, 238, .06); }
-.tabs button { background: none; color: var(--muted); display: grid; justify-items: center; gap: 2px; font-size: 11px; font-weight: 500; padding: 6px 8px; width: 64px; }
+.tabs button { background: none; color: var(--muted); display: grid; justify-items: center; gap: 2px; font-size: 10.5px; font-weight: 500; padding: 6px 2px; flex: 1; min-width: 0; max-width: 72px; }
 .tabs button[aria-current] { color: var(--accent); text-shadow: 0 0 10px rgba(34, 211, 238, .6); }
 .tabs button[aria-current] svg { filter: drop-shadow(0 0 6px rgba(34, 211, 238, .7)); }
 .tabs .plus { background: var(--grad); color: var(--on-accent); width: 56px; height: 56px; border-radius: 50%; place-items: center; margin-top: -26px;
@@ -198,7 +198,7 @@ button.primary:not(.small) { width: 100%; padding: 15px; font-size: 17px; }
     <section data-tab="home">
       <div id="due"></div>
       <h2 class="h">Balances</h2>
-      <p class="hint">What's in each account right now. Tap an account to correct it if it doesn't match your bank app.</p>
+      <p class="hint">Everyday money in each account right now (savings are on the Savings tab). Tap an account to correct it if it doesn't match your bank app.</p>
       <div id="balances"></div>
       <div id="settle"></div>
       <div class="row" style="margin:24px 4px 6px">
@@ -237,6 +237,20 @@ button.primary:not(.small) { width: 100%; padding: 15px; font-size: 17px; }
           <input name="cur" value="MMK" list="curs" maxlength="3" aria-label="Currency" style="flex:none;width:88px;padding:12px 10px" required>
         </div>
         <button class="primary" style="margin-top:10px">Add business</button>
+      </form>
+    </section>
+
+    <section data-tab="savings" hidden>
+      <p class="hint">Money you set aside, like your cash emergency fund. It's kept apart from your everyday balances, and spending from it doesn't count in the monthly budget. Putting money in or taking it out is a transfer.</p>
+      <div id="saveList"></div>
+      <form id="newSave" class="card">
+        <h3>Add a savings pot</h3>
+        <p class="hint">e.g. Cash savings (THB), Emergency fund (MMK), Trip fund. One per currency or goal.</p>
+        <div class="row">
+          <input name="name" placeholder="e.g. Trip fund" aria-label="Savings name" required>
+          <input name="cur" value="THB" list="curs" maxlength="3" aria-label="Currency" style="flex:none;width:88px;padding:12px 10px" required>
+        </div>
+        <button class="primary" style="margin-top:10px">Add savings</button>
       </form>
     </section>
 
@@ -305,11 +319,14 @@ button.primary:not(.small) { width: 100%; padding: 15px; font-size: 17px; }
           <label class="field" style="margin-top:14px"><span>How shared costs are split</span>
             <div class="row"><span id="splitA" style="flex:none"></span><input name="split" type="number" min="0" max="100" step="1" inputmode="numeric" required aria-label="First person's share in percent" style="flex:none;width:80px"><span>% <span id="splitB"></span></span></div>
             <small>Applies to new shared entries. Past entries keep the split they were saved with.</small></label>
+          <div class="field" style="margin-top:14px"><span>Take each person's share automatically from</span>
+            <div id="shareFrom" style="display:grid;gap:8px"></div>
+            <small>When one of you pays from your own account, the other person's part is taken straight from the account picked here, so nothing piles up in Settle up. Choose "Don't take it" to track it as a debt instead.</small></div>
         </div>
         <div class="card">
           <h3>Accounts</h3>
           <p class="hint"><b>Owner:</b> Joint means shared money, so spending from it never creates a debt. Pick a person for an account that's only theirs, and the app tracks who owes whom.<br>
-            <b>Type:</b> Business keeps money out of household totals and shows profit. Person is for loans.<br>
+            <b>Type:</b> Bank / wallet is everyday money. Savings lives in the Savings tab, outside your balances and budget. Business keeps money out of household totals and shows profit. Person is for loans.<br>
             <b>Target:</b> optional savings goal, shown as a progress bar.<br>
             <b>Closed:</b> for an account you no longer use. It disappears from lists but its history stays.</p>
           <div id="accts"></div>
@@ -362,6 +379,7 @@ button.primary:not(.small) { width: 100%; padding: 15px; font-size: 17px; }
     <button data-go="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Overview</button>
     <button data-go="history"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>History</button>
     <button data-go="add" class="plus" aria-label="Add entry"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button data-go="savings"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="15" rx="2"/><circle cx="12" cy="11.5" r="3.5"/><path d="M12 8v1M7 19v2M17 19v2"/></svg>Savings</button>
     <button data-go="business"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/></svg>Business</button>
     <button data-go="bills"><svg viewBox="0 0 24 24"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3"/></svg>Bills</button>
   </nav>
@@ -378,17 +396,19 @@ const CATS = {
   out: ['Rent', 'Utilities', 'Phone & Internet', 'Subscriptions', 'Groceries', 'Eating out', 'Food delivery', 'Shopping', 'Online shopping',
     'Transport', 'Travel', 'Hangout', 'Night out', 'Leisure', 'Health', 'Education', 'Insurance', 'Family', 'Gifts & donations', 'Emergency', 'Other'],
   in: ['Salary', 'Google Ads', 'Gift received', 'Interest', 'Opening balance', 'Other'],
-  move: ['Savings', 'Exchange', 'Other'],
+  move: ['Exchange', 'Top up', 'Other'],
+  save: ['Savings', 'Withdrawal', 'Other'],
   bizOut: ['Staff salary', 'Stock & supplies', 'Rent', 'Utilities', 'Marketing & ads', 'Delivery', 'Equipment', 'Online shopping', 'Tax & fees', 'Other'],
   bizIn: ['Sales', 'Google Ads', 'Services', 'Other'],
   bizMove: ['Investment', 'Profit withdrawal', 'Other'],
   loan: ['Lent', 'Repaid to us', 'Borrowed', 'We paid back', 'Other'],
 };
-const house = a => !a.biz && !a.loan;
+const house = a => !a.biz && !a.loan && !a.save; // everyday money: counts in balances and the budget
 // Which category list fits an entry: business/loan lists when such an account is involved.
 const catKey = (type, from, to) => {
   const a = id => state?.accounts.find(x => x.id === id);
   if (type === 'move' && (a(from)?.loan || a(to)?.loan)) return 'loan';
+  if (type === 'move' && (a(from)?.save || a(to)?.save)) return 'save';
   return type === 'out' ? (a(from)?.biz ? 'bizOut' : 'out') : type === 'in' ? (a(to)?.biz ? 'bizIn' : 'in') : (a(from)?.biz || a(to)?.biz ? 'bizMove' : 'move');
 };
 const HINTS = {
@@ -396,7 +416,7 @@ const HINTS = {
   in: 'Money you received: salary, sales, Google Ads.',
   move: 'Money moving between your own accounts: putting cash aside, funding a business, exchanging MMK ↔ THB, or lending to someone.',
 };
-const TITLES = { home: 'Overview', history: 'History', add: 'Add entry', business: 'Business', bills: 'Bills', settings: 'Settings' };
+const TITLES = { home: 'Overview', history: 'History', add: 'Add entry', savings: 'Savings', business: 'Business', bills: 'Bills', settings: 'Settings' };
 const DONE = { out: 'Paid', in: 'Received', move: 'Done' };
 let cfg = JSON.parse(localStorage.cfg || 'null'), key, salt, state, remote, savedKey, branch, editing = null, period = 'month';
 
@@ -501,7 +521,7 @@ async function decode(raw) {
 }
 // Fill in anything an older save or backup might lack.
 function normalize(s) {
-  s.v ??= SCHEMA; s.split ??= 50; s.txns ??= []; s.recurring ??= []; s.budgets ??= {};
+  s.v ??= SCHEMA; s.split ??= 50; s.txns ??= []; s.recurring ??= []; s.budgets ??= {}; s.shareFrom ??= {};
   return s;
 }
 function split(s) {
@@ -559,7 +579,7 @@ async function unlock(pass) {
     salt = crypto.getRandomValues(new Uint8Array(16)); key = await deriveKey(pass, salt);
     const mk = (name, cur) => ({ id: crypto.randomUUID(), name, owner: 'J', cur });
     const s = normalize({ people: ['Me', 'Partner'],
-      accounts: [mk('KBZ Bank', 'MMK'), mk('KBZPay', 'MMK'), mk('WavePay', 'MMK'), mk('KrungThai', 'THB'), mk('Cash savings', 'THB')] });
+      accounts: [mk('KBZ Bank', 'MMK'), mk('KBZPay', 'MMK'), mk('WavePay', 'MMK'), mk('KrungThai', 'THB'), { ...mk('Cash savings', 'THB'), save: true }] });
     const text = split(s)['core.json'];
     const res = await gh('/contents/core.json', 'PUT', { message: 'create vault', content: btoa(JSON.stringify(await seal(text))) });
     remote = { head: res.commit.sha, tree: res.commit.tree.sha, plain: { 'core.json': text } }; state = s;
@@ -574,20 +594,32 @@ async function unlock(pass) {
 const checkVersion = () => state.v > SCHEMA && alert('This data was saved by a newer version of Our Finance. Update this copy of the app before making changes.');
 
 // --- money logic ---
-// Account: owner 'A' | 'B' | 'J' (joint), cur 'MMK' | 'THB' | ..., biz (business), loan (a person), closed, goal.
+// Account: owner 'A' | 'B' | 'J' (joint), cur 'MMK' | 'THB' | ..., biz (business), loan (a person), save (savings), closed, goal.
 // Expense "for": 'S' (shared) | 'A' | 'B'; shared entries store share = A's percent (default 50).
+// An expense may carry from2/part2: the other person's part, taken from their own account (see autoSplit).
 // Exchanges are transfers with amt2 = amount received. Currencies never mix: d[cur] > 0 means B owes A.
 function compute({ accounts, txns }) {
   const A = Object.fromEntries(accounts.map(a => [a.id, a])), bal = Object.fromEntries(accounts.map(a => [a.id, 0])), d = {};
   for (const t of txns) {
-    if (t.from) bal[t.from] -= t.amt;
+    if (t.from) bal[t.from] -= t.amt - (t.part2 || 0);
+    if (t.from2) bal[t.from2] -= t.part2;
     if (t.to) bal[t.to] += t.amt2 ?? t.amt;
-    const p = A[t.from]?.owner, q = A[t.to]?.owner, sign = p === 'A' ? 1 : p === 'B' ? -1 : 0, sh = t.share ?? 50;
-    const v = t.type === 'out' ? (t.for === 'S' ? t.amt * (p === 'A' ? 100 - sh : sh) / 100 : t.for !== p ? t.amt : 0)
+    const p = A[t.from]?.owner, q = A[t.to]?.owner, sign = p === 'A' ? 1 : p === 'B' ? -1 : 0;
+    const v = t.type === 'out' ? (t.from2 ? 0 : otherPart(t, p))
       : t.type === 'move' && house(A[t.to] ?? {}) && q !== 'J' && q !== p ? t.amt : 0;
     if (sign && v) d[A[t.from].cur] = (d[A[t.from].cur] || 0) + sign * v;
   }
   return { bal, d };
+}
+// The part of an expense that belongs to the person who did NOT pay (payer p = 'A' | 'B').
+const otherPart = (t, p) => t.for === 'S' ? t.amt * (p === 'A' ? 100 - (t.share ?? 50) : t.share ?? 50) / 100 : t.for !== p ? t.amt : 0;
+// When one person pays from their own account, the other's part is taken straight from the account
+// they picked in Settings (shareFrom['B|THB'] = account id) instead of piling up in Settle up.
+function autoSplit(tx, s) {
+  const { from2, part2, ...t } = tx, src = s.accounts.find(a => a.id === t.from), p = src?.owner;
+  if (t.type !== 'out' || !src || !house(src) || (p !== 'A' && p !== 'B')) return t;
+  const acc = s.shareFrom?.[`${p === 'A' ? 'B' : 'A'}|${src.cur}`], part = Math.round(otherPart(t, p) * 100) / 100;
+  return part > 0 && s.accounts.some(a => a.id === acc && !a.closed) ? { ...t, from2: acc, part2: part } : t;
 }
 
 // --- rendering ---
@@ -598,7 +630,29 @@ const curOf = id => state.accounts.find(a => a.id === id)?.cur ?? '';
 const homeAcc = cur => (state.accounts.find(a => house(a) && !a.closed && a.cur === cur) ?? state.accounts.find(a => house(a) && !a.closed))?.id;
 const visible = (a, bal) => !a.closed || Math.abs(bal[a.id]) >= 0.01;
 
-function render() { renderAdd(); renderHome(); renderHistory(); renderBusiness(); renderBills(); renderSettings(); }
+function render() { renderAdd(); renderHome(); renderHistory(); renderSavings(); renderBusiness(); renderBills(); renderSettings(); }
+
+// Savings: totals per currency, each pot with its target and what went in / out / was spent in the period.
+function renderSavings() {
+  const { accounts, txns } = state, A = accById(), { bal } = compute(state), pre = prefix(), label = esc(periodLabel()), act = {};
+  const pots = accounts.filter(a => a.save && visible(a, bal)), get = id => act[id] ??= { in: 0, out: 0, spent: 0 };
+  for (const t of txns) {
+    if (!t.date.startsWith(pre)) continue;
+    const src = A[t.from], dst = A[t.to];
+    if (dst?.save && !src?.save) get(dst.id).in += t.amt2 ?? t.amt;
+    if (src?.save && t.type === 'move' && !dst?.save) get(src.id).out += t.amt;
+    if (src?.save && t.type === 'out') get(src.id).spent += t.amt;
+  }
+  $('#saveList').innerHTML = [...new Set(pots.map(a => a.cur))].map(c => {
+    const list = pots.filter(a => a.cur === c), tot = sum(list.map(a => bal[a.id]));
+    return `<div class="card"><div class="line head"><span class="badge">${esc(c)}</span>${money(tot, c, 'big good')}</div>
+      ${list.map(a => { const x = act[a.id] ?? { in: 0, out: 0, spent: 0 }; return `<div class="person">
+        <div class="line tap" data-adj="${esc(a.id)}"><span class="fill"><b>${esc(a.name)}</b><small class="sub">${esc(who(a.owner))}${a.closed ? ' · closed' : ''}</small>${goalBar(a, bal[a.id])}</span>
+          ${money(bal[a.id], c, bal[a.id] < 0 ? 'bad' : '')}</div>
+        <small class="sub" style="margin-top:6px">${label}: +${fmt(x.in)} added · −${fmt(x.out)} taken out · −${fmt(x.spent)} spent</small>
+        <div class="row qa" style="margin-top:8px"><button data-q="save:${esc(a.id)}">Add money</button><button data-q="take:${esc(a.id)}">Take out</button><button data-q="spend:${esc(a.id)}">Spend</button></div></div>`; }).join('')}</div>`;
+  }).join('') || '<div class="card empty">No savings yet. Add one below, or set an account\'s Type to Savings in Settings.</div>';
+}
 
 const bars = (o, c, cls, sorted = true) => {
   const tot = sum(o) || 1, list = Object.entries(o);
@@ -720,7 +774,7 @@ function historyList() {
   if (!words.length) return { q: false, list: state.txns.filter(t => t.date.startsWith($('#month').value)) };
   const TYPE = { out: 'expense', in: 'income', move: 'transfer exchange' };
   return { q: true, list: state.txns.filter(t => {
-    const hay = [t.date, TYPE[t.type], t.cat, t.note, nameOf(t.from), nameOf(t.to), curOf(t.from ?? t.to), t.amt, t.amt2, t.type === 'out' ? who(t.for) : ''].join(' ').toLowerCase();
+    const hay = [t.date, TYPE[t.type], t.cat, t.note, nameOf(t.from), nameOf(t.to), t.from2 && nameOf(t.from2), curOf(t.from ?? t.to), t.amt, t.amt2, t.type === 'out' ? who(t.for) : ''].join(' ').toLowerCase();
     return words.every(w => hay.includes(w));
   }) };
 }
@@ -733,7 +787,7 @@ function renderHistory() {
   let html = '', last;
   for (const t of mt) {
     if (t.date !== last) { html += `${last ? '</div>' : ''}<h4 class="day">${esc(dayLabel(t.date))}</h4><div class="card rows">`; last = t.date; }
-    const where = t.type === 'out' ? `${nameOf(t.from)} · ${who(t.for)}${t.for === 'S' && (t.share ?? 50) !== 50 ? ` ${t.share}/${100 - t.share}` : ''}`
+    const where = t.type === 'out' ? `${nameOf(t.from)}${t.from2 ? ` + ${nameOf(t.from2)} (${fmt(t.part2)})` : ''} · ${who(t.for)}${t.for === 'S' && (t.share ?? 50) !== 50 ? ` ${t.share}/${100 - t.share}` : ''}`
       : t.type === 'in' ? nameOf(t.to) : `${nameOf(t.from)} → ${nameOf(t.to)}`;
     const amt = t.type === 'out' ? money(t.amt, curOf(t.from), 'bad', '−')
       : t.type === 'in' ? money(t.amt, curOf(t.to), 'good', '+')
@@ -763,7 +817,15 @@ function renderSettings() {
   st.a.value = people[0]; st.b.value = people[1]; st.split.value = state.split;
   $('#splitA').textContent = people[0] + ' pays';
   $('#splitB').textContent = `· ${people[1]} pays the rest`;
-  const opts = (pairs, sel) => pairs.map(([k, l]) => `<option value="${k}"${k === sel ? ' selected' : ''}>${esc(l)}</option>`).join('');
+  const opts = (pairs, sel) => pairs.map(([k, l]) => `<option value="${esc(k)}"${k === sel ? ' selected' : ''}>${esc(l)}</option>`).join('');
+  // One picker per person and currency they have a personal everyday account in.
+  const pickers = ['A', 'B'].flatMap(P => {
+    const own = accounts.filter(a => house(a) && a.owner === P && !a.closed);
+    return [...new Set(own.map(a => a.cur))].map(c => `<label class="row"><span style="flex:none;min-width:110px">${esc(who(P))} · ${esc(c)}</span>
+      <select name="sf:${P}|${esc(c)}" aria-label="${esc(who(P))}'s ${esc(c)} share account">${opts([['', "Don't take it (track in Settle up)"],
+      ...own.filter(a => a.cur === c).map(a => [a.id, a.name])], state.shareFrom[`${P}|${c}`] ?? '')}</select></label>`);
+  });
+  $('#shareFrom').innerHTML = pickers.join('') || `<p class="hint" style="margin:0">Not needed yet: all everyday accounts are Joint. When one of you gets a personal account (set its Owner below), choose it here.</p>`;
   $('#accts').innerHTML = [...accounts, { id: 'new', name: '', owner: 'J', cur: 'MMK' }].map(a => { const id = esc(a.id); return `<div class="acct${a.id === 'new' ? ' new' : ''}">
     <input name="name:${id}" value="${esc(a.name)}" placeholder="+ Add an account, e.g. Her KBZPay" aria-label="Account name">
     <div class="row">
@@ -771,7 +833,7 @@ function renderSettings() {
       <input name="cur:${id}" value="${esc(a.cur)}" list="curs" maxlength="3" aria-label="Currency" style="flex:none;width:88px;padding:12px 10px">
     </div>
     <div class="row">
-      <select name="kind:${id}" aria-label="Type">${opts([['', 'Bank / wallet / cash'], ['biz', 'Business'], ['loan', 'Person (loan)']], a.biz ? 'biz' : a.loan ? 'loan' : '')}</select>
+      <select name="kind:${id}" aria-label="Type">${opts([['', 'Bank / wallet'], ['save', 'Savings'], ['biz', 'Business'], ['loan', 'Person (loan)']], a.save ? 'save' : a.biz ? 'biz' : a.loan ? 'loan' : '')}</select>
       <input name="goal:${id}" value="${a.goal ?? ''}" type="number" min="0" step="any" inputmode="decimal" placeholder="Target" aria-label="Savings target (optional)" style="flex:none;width:100px">
     </div>
     ${a.id === 'new' ? '' : `<div class="row" style="justify-content:space-between">
@@ -783,8 +845,9 @@ function renderSettings() {
   const one = a => o('acc:' + a.id, `${a.name} · ${a.cur}${a.closed ? ' (closed)' : ''}`), group = (label, list) => list.length ? `<optgroup label="${label}">${list.map(one).join('')}</optgroup>` : '';
   sel.innerHTML = o('all', 'Everything')
     + `<optgroup label="Groups">${o('own:J', 'All joint accounts')}${o('own:A', `${people[0]}'s accounts`)}${o('own:B', `${people[1]}'s accounts`)}`
-    + `${accounts.some(a => a.biz) ? o('biz', 'All businesses') : ''}${accounts.some(a => a.loan) ? o('loan', 'All loans') : ''}</optgroup>`
-    + group('One account', accounts.filter(house)) + group('One business', accounts.filter(a => a.biz)) + group('One person (loan)', accounts.filter(a => a.loan));
+    + `${accounts.some(a => a.save) ? o('save', 'All savings') : ''}${accounts.some(a => a.biz) ? o('biz', 'All businesses') : ''}${accounts.some(a => a.loan) ? o('loan', 'All loans') : ''}</optgroup>`
+    + group('One account', accounts.filter(house)) + group('One savings', accounts.filter(a => a.save))
+    + group('One business', accounts.filter(a => a.biz)) + group('One person (loan)', accounts.filter(a => a.loan));
   sel.value = keep; if (sel.selectedIndex < 0) sel.selectedIndex = 0;
   $('#repoInfo').textContent = `Connected to ${cfg.repo}. Fine-grained GitHub tokens expire; when the app says the token expired, make a new one and paste it here.`;
 }
@@ -795,21 +858,29 @@ function renderAdd() {
   const group = (label, list) => list.length ? `<optgroup label="${label}">${list.map(a => `<option value="${esc(a.id)}">${esc(a.name)} · ${esc(a.cur)}</option>`).join('')}</optgroup>` : '';
   for (const el of [f.from, f.to]) {
     const v = el.value, list = accounts.filter(pick);
-    el.innerHTML = group('Accounts', list.filter(house)) + group('Businesses', list.filter(a => a.biz)) + group('People (loans)', list.filter(a => a.loan));
+    el.innerHTML = group('Accounts', list.filter(house)) + group('Savings', list.filter(a => a.save))
+      + group('Businesses', list.filter(a => a.biz)) + group('People (loans)', list.filter(a => a.loan));
     el.value = v; if (el.selectedIndex < 0) el.selectedIndex = 0;
   }
   const forV = f.elements.for?.value || 'S';
   $('#forSeg').innerHTML = [['S', 'Shared'], ['A', people[0]], ['B', people[1]]]
     .map(([k, l]) => `<label><input type="radio" name="for" value="${k}"${k === forV ? ' checked' : ''}>${esc(l)}</label>`).join('');
-  const sh = editing?.share ?? state.split;
-  $('#forHint').textContent = `Shared costs are split ${sh}/${100 - sh} (${people[0]}/${people[1]}).${editing ? '' : ' Change it in Settings.'}`;
   syncType();
+}
+// "Who is it for?" hint: the split, plus where the other person's part will be taken from.
+function forHint() {
+  const f = $('#add'), sh = editing?.share ?? state.split, { people } = state;
+  const t = autoSplit({ type: 'out', amt: 100, from: f.from.value, for: f.elements.for?.value || 'S', share: sh }, state);
+  const p = state.accounts.find(a => a.id === t.from)?.owner;
+  $('#forHint').textContent = `Shared costs are split ${sh}/${100 - sh} (${people[0]}/${people[1]}).`
+    + (t.from2 ? ` ${who(p === 'A' ? 'B' : 'A')}'s part will be taken from ${nameOf(t.from2)}.` : editing ? '' : ' Change it in Settings.');
 }
 
 function syncType() {
   const f = $('#add'), t = f.elements.type.value, cur = id => state?.accounts.find(a => a.id === id)?.cur ?? '';
   if (t === 'move' && f.to.value === f.from.value && f.to.options.length > 1) f.to.selectedIndex = (f.from.selectedIndex + 1) % f.to.options.length;
-  $('#fromF').hidden = t === 'in'; $('#toF').hidden = t === 'out'; $('#forF').hidden = t !== 'out' || catKey(t, f.from.value) === 'bizOut';
+  $('#fromF').hidden = t === 'in'; $('#toF').hidden = t === 'out'; $('#forF').hidden = t !== 'out' || !house(state?.accounts.find(a => a.id === f.from.value) ?? {});
+  if (state && !$('#forF').hidden) forHint();
   $('#fromL').textContent = t === 'out' ? 'Paid from' : 'From';
   $('#toL').textContent = t === 'in' ? 'Received into' : 'To';
   const c1 = cur(t === 'in' ? f.to.value : f.from.value), c2 = cur(f.to.value);
@@ -870,7 +941,7 @@ function go(tab, push = true) {
   for (const s of $$('[data-tab]')) s.hidden = s.dataset.tab !== tab;
   for (const b of $$('[data-go]')) b.toggleAttribute('aria-current', b.dataset.go === tab);
   $('#title').textContent = TITLES[tab];
-  $('#month').hidden = !['home', 'history', 'business'].includes(tab);
+  $('#month').hidden = !['home', 'history', 'savings', 'business'].includes(tab);
   scrollTo(0, 0);
 }
 
@@ -886,12 +957,12 @@ function download(text, file, type) {
 function exportCsv(txns, file, accId) {
   const A = accById(), TYPE = { out: 'Expense', in: 'Income', move: 'Transfer' }, byDate = (a, b) => a.date.localeCompare(b.date);
   const cell = v => { let s = String(v ?? ''); if (typeof v !== 'number' && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return `"${s.replace(/"/g, '""')}"`; };
-  const change = t => (t.to === accId ? t.amt2 ?? t.amt : 0) - (t.from === accId ? t.amt : 0);
+  const change = t => (t.to === accId ? t.amt2 ?? t.amt : 0) - (t.from === accId ? t.amt - (t.part2 || 0) : 0) - (t.from2 === accId ? t.part2 : 0);
   const after = {};
-  if (accId) { let run = 0; for (const t of [...state.txns].sort(byDate)) if (t.from === accId || t.to === accId) after[t.id] = run += change(t); }
+  if (accId) { let run = 0; for (const t of [...state.txns].sort(byDate)) if (t.from === accId || t.to === accId || t.from2 === accId) after[t.id] = run += change(t); }
   const rows = [['Date', 'Type', 'Category', 'Amount', 'Currency', 'From', 'To', 'Amount received', 'Received currency', 'Who for', 'Note', ...(accId ? ['Change', 'Balance after'] : [])]];
   for (const t of [...txns].sort(byDate)) rows.push([
-    t.date, TYPE[t.type], t.cat, t.amt, A[t.from ?? t.to]?.cur, A[t.from]?.name, A[t.to]?.name,
+    t.date, TYPE[t.type], t.cat, t.amt, A[t.from ?? t.to]?.cur, (A[t.from]?.name ?? '') + (t.from2 ? ` + ${A[t.from2]?.name} (${t.part2})` : ''), A[t.to]?.name,
     t.amt2 ?? '', t.amt2 != null ? A[t.to]?.cur : '', t.type === 'out' && !A[t.from]?.biz ? who(t.for) : '', t.note,
     ...(accId ? [change(t), after[t.id]] : [])]);
   download('﻿' + rows.map(r => r.map(cell).join(',')).join('\r\n'), file, 'text/csv;charset=utf-8');
@@ -899,9 +970,9 @@ function exportCsv(txns, file, accId) {
 // scope: 'all' | 'own:J|A|B' (household accounts by owner) | 'biz' | 'loan' | 'acc:<id>'; month '' = all time.
 function exportScope(scope, month) {
   const [kind, v] = scope.split(':'), acc = state.accounts;
-  const ids = new Set(kind === 'all' ? acc.map(a => a.id) : kind === 'biz' ? acc.filter(a => a.biz).map(a => a.id)
-    : kind === 'loan' ? acc.filter(a => a.loan).map(a => a.id) : kind === 'own' ? acc.filter(a => house(a) && a.owner === v).map(a => a.id) : [v]);
-  const list = state.txns.filter(t => (ids.has(t.from) || ids.has(t.to)) && t.date.startsWith(month));
+  const ids = new Set(kind === 'all' ? acc.map(a => a.id) : kind === 'own' ? acc.filter(a => house(a) && a.owner === v).map(a => a.id)
+    : ['biz', 'loan', 'save'].includes(kind) ? acc.filter(a => a[kind]).map(a => a.id) : [v]);
+  const list = state.txns.filter(t => (ids.has(t.from) || ids.has(t.to) || ids.has(t.from2)) && t.date.startsWith(month));
   if (!list.length) return alert('Nothing to export for that choice.');
   const label = kind === 'acc' ? nameOf(v) : $(`#csvScope option[value="${scope}"]`)?.textContent ?? scope;
   exportCsv(list, `our-finance-${label}-${month || 'all-time'}.csv`.replace(/[\\/:*?"<>|\s]+/g, '-'), kind === 'acc' ? v : undefined);
@@ -930,15 +1001,15 @@ $('#csvMonth').onclick = () => {
   exportCsv(list, q ? `our-finance-search-${today()}.csv` : `our-finance-${$('#month').value}.csv`);
 };
 $('#csvGo').onclick = () => exportScope($('#csvScope').value, $('#csvPick').value);
-$('#month').onchange = () => { renderHome(); renderHistory(); renderBusiness(); };
+$('#month').onchange = () => { renderHome(); renderHistory(); renderSavings(); renderBusiness(); };
 for (const el of $$('[name=periodH],[name=periodB]')) el.onchange = () => {
   period = el.value;
   for (const r of $$(`[name=periodH][value=${period}],[name=periodB][value=${period}]`)) r.checked = true;
-  renderHome(); renderBusiness();
+  renderHome(); renderSavings(); renderBusiness();
 };
 $('#add').addEventListener('change', e => {
   if (e.target.name === 'type') $('#add').cat.value = '';
-  if (['type', 'from', 'to'].includes(e.target.name)) syncType();
+  if (['type', 'from', 'to', 'for'].includes(e.target.name)) syncType();
 });
 $('#chips').onclick = e => { const c = e.target.dataset.cat; if (c != null) { $('#add').cat.value = c; renderChips(); } };
 $('#add').cat.oninput = renderChips;
@@ -959,7 +1030,11 @@ const quick = e => {
   if (q === 'invest') return prefill('move', homeAcc(a.cur), id, 'Investment');
   if (q === 'lend') return prefill('move', homeAcc(a.cur), id, 'Lent');
   if (q === 'repay') return prefill('move', id, homeAcc(a.cur), 'Repaid to us');
+  if (q === 'save') return prefill('move', homeAcc(a.cur), id, 'Savings');
+  if (q === 'take') return prefill('move', id, homeAcc(a.cur), 'Withdrawal');
+  if (q === 'spend') return prefill('out', id, null, 'Emergency');
 };
+$('#saveList').onclick = quick;
 $('#bizList').onclick = quick;
 $('#loans').onclick = quick;
 
@@ -970,6 +1045,7 @@ const addAccount = (extra, msg) => async e => {
 };
 $('#newBiz').onsubmit = addAccount({ biz: true }, 'added');
 $('#newLoan').onsubmit = addAccount({ loan: true }, 'added');
+$('#newSave').onsubmit = addAccount({ save: true }, 'added');
 
 $('#summary').onclick = e => {
   const k = e.target.closest('[data-bud]')?.dataset.bud;
@@ -998,10 +1074,10 @@ $('#add').onsubmit = async e => {
     if (id) {
       const i = s.txns.findIndex(t => t.id === id);
       if (i < 0) throw Error('This entry was deleted on the other phone.');
-      s.txns[i] = { ...tx, id, date: f.date };
+      s.txns[i] = autoSplit({ ...tx, id, date: f.date }, s);
       return;
     }
-    s.txns.push({ ...tx, id: crypto.randomUUID(), date: f.date });
+    s.txns.push(autoSplit({ ...tx, id: crypto.randomUUID(), date: f.date }, s));
     if (every) s.recurring.push({ id: crypto.randomUUID(), every, day, next: addMonths(f.date, every, day), tx });
   }, id ? 'Updated' : every ? 'Saved, and added to Bills' : 'Saved');
   if (!ok) return;
@@ -1026,7 +1102,7 @@ $('#due').onclick = e => {
   save(s => {
     const r = s.recurring.find(r => r.id === id);
     if (!r || r.next !== seen) return; // the other phone already handled this one
-    if (paid) s.txns.push({ ...r.tx, ...(r.tx.for === 'S' && { share: s.split }), id: crypto.randomUUID(), date: r.next, amt });
+    if (paid) s.txns.push(autoSplit({ ...r.tx, ...(r.tx.for === 'S' && { share: s.split }), id: crypto.randomUUID(), date: r.next, amt }, s));
     if (keep) r.tx.amt = amt;
     r.next = addMonths(r.next, r.every, r.day);
   }, paid ? 'Recorded' : 'Skipped');
@@ -1047,7 +1123,7 @@ $('#recurring').onclick = e => {
 $('#accts').onclick = e => {
   const id = e.target.dataset.dela;
   if (id && confirm('Delete this account? (Only possible if it has no entries. Otherwise tick "Closed".)')) save(s => {
-    if (s.txns.some(t => t.from === id || t.to === id) || s.recurring.some(r => r.tx.from === id || r.tx.to === id)) throw Error('This account has entries, so it can\'t be deleted. Tick "Closed" instead.');
+    if (s.txns.some(t => t.from === id || t.to === id || t.from2 === id) || s.recurring.some(r => r.tx.from === id || r.tx.to === id)) throw Error('This account has entries, so it can\'t be deleted. Tick "Closed" instead.');
     s.accounts = s.accounts.filter(a => a.id !== id);
   }, 'Account deleted');
 };
@@ -1055,9 +1131,11 @@ $('#accts').onclick = e => {
 $('#settings').onsubmit = e => {
   e.preventDefault();
   const f = Object.fromEntries(new FormData(e.target)), up = c => (c || '').trim().toUpperCase();
-  const fields = id => ({ owner: f[`owner:${id}`], biz: f[`kind:${id}`] === 'biz', loan: f[`kind:${id}`] === 'loan', closed: `closed:${id}` in f, goal: +f[`goal:${id}`] || undefined });
+  const fields = id => ({ owner: f[`owner:${id}`], save: f[`kind:${id}`] === 'save', biz: f[`kind:${id}`] === 'biz', loan: f[`kind:${id}`] === 'loan',
+    closed: `closed:${id}` in f, goal: +f[`goal:${id}`] || undefined });
   save(s => {
     s.people = [f.a.trim(), f.b.trim()];
+    s.shareFrom = Object.fromEntries(Object.entries(f).filter(([k, v]) => k.startsWith('sf:') && v).map(([k, v]) => [k.slice(3), v]));
     s.split = Math.min(100, Math.max(0, Math.round(+f.split)));
     for (const a of s.accounts) if (`name:${a.id}` in f) Object.assign(a, { name: f[`name:${a.id}`].trim() || a.name, cur: up(f[`cur:${a.id}`]) || a.cur, ...fields(a.id) });
     if (f['name:new'].trim()) s.accounts.push({ id: crypto.randomUUID(), name: f['name:new'].trim(), cur: up(f['cur:new']) || 'MMK', ...fields('new'), closed: false });
@@ -1168,7 +1246,15 @@ async function selfTest() {
   const bizOk = b.inv === 100 && b.by.A === 100 && b.mIn === 50 && b.mOut === 20 && b.in - b.out === 30 && b.back === 10;
   const mathOk = compute({ ...s, txns: s.txns.slice(0, 2) }).d.MMK === 30 && compute({ ...s, txns: s.txns.slice(0, 8) }).d.MMK === 0
     && d.MMK === 80 && d.THB === -2 && bal.a === -777 && bal.b === -50 && bal.j === -1987 && bal.t === 10 && bal.k === -2 && bal.p === 500;
-  const datesOk = addMonths('2026-01-31', 1, 31) === '2026-02-28' && addMonths('2026-02-28', 1, 31) === '2026-03-31'
+  // Automatic share: B's half comes straight out of B's account; no share account for A = stays a Settle-up debt.
+  const sp = { accounts: [{ id: 'a', owner: 'A', cur: 'MMK' }, { id: 'b', owner: 'B', cur: 'MMK' }, { id: 'v', owner: 'J', cur: 'THB', save: true }], shareFrom: { 'B|MMK': 'b' } };
+  const t1 = autoSplit({ type: 'out', from: 'a', for: 'S', share: 50, amt: 100, date: '2026-10-01' }, sp);
+  const t2 = autoSplit({ type: 'out', from: 'a', for: 'A', amt: 30, date: '2026-10-01' }, sp);             // only A's: nothing to take
+  const t3 = autoSplit({ type: 'out', from: 'b', for: 'S', share: 50, amt: 100, date: '2026-10-01' }, sp); // A has no share account
+  const sr = compute({ accounts: sp.accounts, txns: [t1, t2, t3] });
+  const splitOk = t1.from2 === 'b' && t1.part2 === 50 && !t2.from2 && !t3.from2
+    && sr.bal.a === -80 && sr.bal.b === -150 && sr.d.MMK === -50 && !house(sp.accounts[2]);
+  const datesOk =addMonths('2026-01-31', 1, 31) === '2026-02-28' && addMonths('2026-02-28', 1, 31) === '2026-03-31'
     && addMonths('2026-12-15', 1, 15) === '2027-01-15' && addMonths('2024-02-29', 12, 29) === '2025-02-28' && addMonths('2026-11-30', 3, 30) === '2027-02-28';
   // Storage: split into monthly files, encrypt, decode back to the same data.
   const full = normalize(structuredClone(s)), files = split(full), raw = {};
@@ -1179,8 +1265,8 @@ async function selfTest() {
     && await gitSha('hello\n') === 'ce013625030ba8dba906f756967f9e9ca394464a';
   key = await deriveKey('wrong passphrase!!', salt);
   const locked = await unseal(JSON.parse(raw['core.json'])).then(() => false, () => true);
-  document.body.textContent = mathOk && bizOk && datesOk && storeOk && locked ? 'SELF-TEST OK'
-    : `SELF-TEST FAIL ${JSON.stringify({ mathOk, bizOk, datesOk, storeOk, locked })}`;
+  document.body.textContent = mathOk && bizOk && splitOk && datesOk && storeOk && locked ? 'SELF-TEST OK'
+    : `SELF-TEST FAIL ${JSON.stringify({ mathOk, bizOk, splitOk, datesOk, storeOk, locked })}`;
 }
 
 location.hash === '#test' ? selfTest() : boot();
