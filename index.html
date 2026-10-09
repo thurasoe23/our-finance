@@ -105,6 +105,10 @@ input, select { width: 100%; padding: 12px; border: 1px solid var(--line); borde
 input::placeholder { color: #5a6d93; }
 input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(34, 211, 238, .18), var(--glow); }
 input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); }
+/* iOS Safari gives date/month inputs a fixed intrinsic width that overflows; let them shrink like other fields */
+input[type=date], input[type=month] { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; display: block; min-height: 48px; color-scheme: dark; }
+input::-webkit-date-and-time-value { text-align: left; margin: 0; }
+.appbar input[type=month] { min-height: 0; }
 button { cursor: pointer; border: 1px solid rgba(34, 211, 238, .25); border-radius: 12px; padding: 12px 16px; background: var(--soft); color: var(--accent); font-weight: 600; }
 button:active { transform: scale(.98); }
 .x, .tabs button, .appbar .icon { border: 0; }
