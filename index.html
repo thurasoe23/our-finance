@@ -722,7 +722,7 @@ function renderHome() {
 
   // Period summary: household (non-business, non-loan) per currency
   $('#sumTitle').textContent = periodLabel();
-  const pre = prefix(), per = {}, P = c => per[c] ??= { spend: {}, earn: {}, months: {}, inv: {}, A: 0, B: 0 };
+  const pre = prefix(), per = {}, P = c => per[c] ??= { spend: {}, earn: {}, months: {}, inv: {}, xin: 0, xout: 0, A: 0, B: 0 };
   for (const t of txns) {
     if (!t.date.startsWith(pre)) continue;
     const src = A[t.from], dst = A[t.to];
@@ -735,6 +735,12 @@ function renderHome() {
     if (t.type === 'in' && dst && house(dst)) { const p = P(dst.cur); p.earn[t.cat] = (p.earn[t.cat] || 0) + t.amt; }
     // Invested in a business from an everyday account, keyed by whose account it came from.
     if (t.type === 'move' && src && house(src) && dst?.biz) { const p = P(src.cur), k = `${src.owner}|${dst.id}`; p.inv[k] = (p.inv[k] || 0) + t.amt; }
+    // Currency exchange (MMK ↔ THB): not income (that money was already earned in the other currency),
+    // but shown per currency so a card's spending is visibly covered by money exchanged in.
+    if (t.type === 'move' && src && dst && src.cur !== dst.cur && !src.biz && !src.loan && !dst.biz && !dst.loan) {
+      if (house(src)) P(src.cur).xout += t.amt;
+      if (house(dst)) P(dst.cur).xin += t.amt2 ?? t.amt;
+    }
   }
   const invHtml = (inv, c) => {
     const rows = Object.entries(inv).sort((a, b) => b[1] - a[1]), byWho = {};
@@ -751,6 +757,10 @@ function renderHome() {
       [new Date(mm + '-01T00:00').toLocaleDateString(undefined, { month: 'short' }), p.months[mm]])) : null;
     return `<div class="card"><div class="line head"><span class="badge">${esc(c)}</span></div>
       <div class="stats"><div><small>Spent</small>${money(sp, c, 'big bad')}</div><div><small>Income</small>${money(er, c, 'big good')}</div></div>
+      ${p.xin || p.xout ? `<div class="grid4" style="margin-bottom:10px">
+        <div><small>⇄ Exchanged in</small>${money(p.xin, c, 'good', '+')}</div><div><small>⇄ Exchanged out</small>${money(p.xout, c, 'bad', '−')}</div></div>
+        <p class="hint">Net (income + exchanged in − spent − exchanged out): <b class="${er + p.xin - sp - p.xout < 0 ? 'bad' : 'good'}">${fmt(er + p.xin - sp - p.xout)} ${esc(c)}</b><br>
+        Exchanges aren't income: that money was already counted when it was earned in the other currency.</p>` : ''}
       ${sp ? `<p class="hint">Each person's share: ${esc(people[0])} ${fmt(p.A)} · ${esc(people[1])} ${fmt(p.B)}</p>` : ''}
       ${months && Object.keys(months).length > 1 ? `<h4>Spending month by month</h4>${bars(months, c, 'bad', false)}` : ''}
       ${sp || Object.keys(state.budgets).some(k => k.startsWith(c + '|')) ? `<h4>Spending by category</h4>${spendBars(p.spend, c)}` : ''}
